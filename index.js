@@ -1,4 +1,3 @@
-
 import express from "express";
 import bodyParser from "body-parser";
 import pg from "pg";
@@ -6,17 +5,23 @@ import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 
+dotenv.config();  // Load env variables ASAP
+
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
-// PostgreSQL DB connection
-dotenv.config();
-
+// PostgreSQL DB connection (Supabase)
 const db = new pg.Client({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
 });
-db.connect();
+
+db.connect()
+  .then(() => console.log("Connected to Supabase Postgres DB"))
+  .catch((err) => {
+    console.error("Failed to connect to DB:", err);
+    process.exit(1);  // Exit if no DB connection
+  });
 
 // Middleware
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -88,5 +93,12 @@ app.post("/delete", async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+  console.log(`Server running on port ${port}`);
+});
+
+// Optional: Graceful shutdown for DB client
+process.on("SIGINT", async () => {
+  console.log("Closing DB connection...");
+  await db.end();
+  process.exit();
 });
